@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from sqlalchemy.dialects.sqlite import JSON #import JSON type for SQLite
 
 db = SQLAlchemy() #connection between python objects and database
 
@@ -23,6 +24,8 @@ class Users(db.Model): #not just plain classes but database models
     role = db.Column(db.String(50), nullable=False) #employee, it_support, admin
     department = db.Column(db.String(100))
     active = db.Column(db.Boolean, default=True)  #default=True -> if no val provided, use True. New users active by default and offboarding flips it to False
+
+    onboarding_tasks = db.Column(JSON, default=[])
     
     submitted_tickets = db.relationship( #db.relationship -> allows navigation between tables using python objects not SQL
         "Ticket", foreign_keys="Ticket.submitted_by", back_populates="submitter", cascade="all, delete-orphan" #backref -> creates reverse link automatically
@@ -62,7 +65,7 @@ class Ticket(db.Model): #relationships defines ticker -> users and inventory -> 
     )
 
     def __repr__(self):
-        return f"<Ticket {self.title} asssubmitted_by {self.submitted_by} assigned_to {self.assigned_to}>"
+        return f"<Ticket {self.title} submitted_by {self.submitted_by} assigned_to {self.assigned_to}>"
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow) #auto gets timestamp
     resolved_at = db.Column(db.DateTime, nullable=True)
@@ -77,5 +80,20 @@ class Inventory(db.Model):
     location = db.Column(db.String(100))
 
     assigned_to = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    assigned_user = db.relationship(
+        "Users",
+        foreign_keys=[assigned_to],
+        backref="inventory_items"
+    )
+
+    def __repr__(self):
+        return f"<Inventory {self.device_type} {self.serial_number} assigned_to {self.assigned_to}>"
+    
+class SystemState(db.Model):
+    __table__name = "sytem_state"
+    id = db.Column(db.Integer, primary_key=True)
+    gameday = db.Column(db.Boolean, default=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
         
        
